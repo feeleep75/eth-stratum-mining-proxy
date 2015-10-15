@@ -1,7 +1,7 @@
-stratum-mining-proxy
+eth-stratum-mining-proxy
 ====================
 
-Application providing bridge between old HTTP/getwork protocol and Stratum mining protocol
+Application providing bridge between Ethereum HTTP/getwork protocol and Stratum mining protocol
 as described here: http://mining.bitcoin.cz/stratum-mining.
 
 Installation on Windows

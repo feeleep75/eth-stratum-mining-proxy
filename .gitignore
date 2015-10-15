@@ -6,3 +6,4 @@ debian/files
 debian/*/
 debian/*.debhelper*
 debian/*.substvars
+log
