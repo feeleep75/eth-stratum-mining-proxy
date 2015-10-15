@@ -7,3 +7,4 @@ debian/*/
 debian/*.debhelper*
 debian/*.substvars
 log
+*.bat

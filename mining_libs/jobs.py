@@ -3,6 +3,7 @@ import time
 import struct
 import subprocess
 import weakref
+import datetime
 
 from twisted.internet import defer
 
@@ -31,53 +32,27 @@ except ImportError:
 class Job(object):
     def __init__(self):
         self.job_id = None
-        self.prevhash = ''
-        self.coinb1_bin = ''
-        self.coinb2_bin = ''
-        self.merkle_branch = []
-        self.version = 1
-        self.nbits = 0
-        self.ntime_delta = 0
-        
+        self.hexHeaderHash = ''
+        self.hexSeedHash = ''
+        self.hexShareTarget = ''
+        self.dtCreated = datetime.datetime.now()
         self.extranonce2 = 0
         self.merkle_to_extranonce2 = {} # Relation between merkle_hash and extranonce2
 
     @classmethod
-    def build_from_broadcast(cls, job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime):
+    def build_from_broadcast(cls, job_id, hexHeaderHash, hexSeedHash, hexShareTarget):
         '''Build job object from Stratum server broadcast'''
         job = Job()
         job.job_id = job_id
-        job.prevhash = prevhash
-        job.coinb1_bin = binascii.unhexlify(coinb1)
-        job.coinb2_bin = binascii.unhexlify(coinb2)
-        job.merkle_branch = [ binascii.unhexlify(tx) for tx in merkle_branch ]
-        job.version = version
-        job.nbits = nbits
-        job.ntime_delta = int(ntime, 16) - int(time.time()) 
+        job.hexHeaderHash = hexHeaderHash
+        job.hexSeedHash = hexSeedHash
+        job.hexShareTarget = hexShareTarget
         return job
 
     def increase_extranonce2(self):
         self.extranonce2 += 1
         return self.extranonce2
 
-    def build_coinbase(self, extranonce):
-        return self.coinb1_bin + extranonce + self.coinb2_bin
-    
-    def build_merkle_root(self, coinbase_hash):
-        merkle_root = coinbase_hash
-        for h in self.merkle_branch:
-            merkle_root = utils.doublesha(merkle_root + h)
-        return merkle_root
-    
-    def serialize_header(self, merkle_root, ntime, nonce):
-        r =  self.version
-        r += self.prevhash
-        r += merkle_root
-        r += binascii.hexlify(struct.pack(">I", ntime))
-        r += self.nbits
-        r += binascii.hexlify(struct.pack(">I", nonce))
-        r += '000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000' # padding    
-        return r            
         
 class JobRegistry(object):   
     def __init__(self, f, cmd, no_midstate, real_target, use_old_target=False, scrypt_target=False):
@@ -104,6 +79,8 @@ class JobRegistry(object):
         
         # Hook for LP broadcasts
         self.on_block = defer.Deferred()
+
+        self.headerHash2Job= weakref.WeakValueDictionary()
 
     def execute_cmd(self, prevhash):
         if self.cmd:
@@ -149,11 +126,21 @@ class JobRegistry(object):
     def add_template(self, template, clean_jobs):
         if clean_jobs:
             # Pool asked us to stop submitting shares from previous jobs
-            self.jobs = []
+            #log.info("Start deleting old jobs")
+            newJobs = []
+            for job in self.jobs:  
+                dtDiff = datetime.datetime.now() - job.dtCreated
+                if dtDiff.total_seconds() < 300:
+                    newJobs.append(job)	
+            self.jobs = newJobs 					
+            for job in self.jobs:  
+                dtDiff = datetime.datetime.now() - job.dtCreated
+                #log.info("Job %s %s " % (job.job_id, dtDiff.total_seconds()))
             
         self.jobs.append(template)
         self.last_job = template
-                
+        self.headerHash2Job[template.hexHeaderHash] = template
+        
         if clean_jobs:
             # Force miners to reload jobs
             on_block = self.on_block
@@ -161,7 +148,7 @@ class JobRegistry(object):
             on_block.callback(True)
     
             # blocknotify-compatible call
-            self.execute_cmd(template.prevhash)
+            self.execute_cmd(template.hexHeaderHash)
           
     def register_merkle(self, job, merkle_hash, extranonce2):
         # merkle_to_job is weak-ref, so it is cleaned up automatically
@@ -176,87 +163,20 @@ class JobRegistry(object):
         extranonce2 = job.merkle_to_extranonce2[merkle_hash]
         return (job, extranonce2)
         
-    def getwork(self, no_midstate=True):
+    def getwork(self):
         '''Miner requests for new getwork'''
         
         job = self.last_job # Pick the latest job from pool
+          
+        return [job.hexHeaderHash, job.hexSeedHash, job.hexShareTarget]            
+        
+    def submit(self, hexNonce, hexHeaderHash, hexMixDigest, worker_name):            
+        #log.info("Submitting %s %s %s %s" % (hexHeaderHash, hexNonce, hexMixDigest, worker_name))
 
-        # 1. Increase extranonce2
-        extranonce2 = job.increase_extranonce2()
-        
-        # 2. Build final extranonce
-        extranonce = self.build_full_extranonce(extranonce2)
-        
-        # 3. Put coinbase transaction together
-        coinbase_bin = job.build_coinbase(extranonce)
-        
-        # 4. Calculate coinbase hash
-        coinbase_hash = utils.doublesha(coinbase_bin)
-        
-        # 5. Calculate merkle root
-        merkle_root = binascii.hexlify(utils.reverse_hash(job.build_merkle_root(coinbase_hash)))
-                
-        # 6. Generate current ntime
-        ntime = int(time.time()) + job.ntime_delta
-        
-        # 7. Serialize header
-        block_header = job.serialize_header(merkle_root, ntime, 0)
-
-        # 8. Register job params
-        self.register_merkle(job, merkle_root, extranonce2)
-        
-        # 9. Prepare hash1, calculate midstate and fill the response object
-        header_bin = binascii.unhexlify(block_header)[:64]
-        hash1 = "00000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000010000"
-
-        result = {'data': block_header,
-                'hash1': hash1}
-        
-        if self.use_old_target:
-            result['target'] = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000000'
-        elif self.real_target:
-            result['target'] = self.target_hex
-        else:
-            result['target'] = self.target1_hex
-    
-        if calculateMidstate and not (no_midstate or self.no_midstate):
-            # Midstate module not found or disabled
-            result['midstate'] = binascii.hexlify(calculateMidstate(header_bin))
-            
-        return result            
-        
-    def submit(self, header, worker_name):            
-        # Drop unused padding
-        header = header[:160]
-
-        # 1. Check if blockheader meets requested difficulty
-        header_bin = binascii.unhexlify(header[:160])
-        rev = ''.join([ header_bin[i*4:i*4+4][::-1] for i in range(0, 20) ])
-        hash_bin = utils.doublesha(rev)
-        block_hash = ''.join([ hash_bin[i*4:i*4+4][::-1] for i in range(0, 8) ])
-        
-        #log.info('!!! %s' % header[:160])
-        log.info("Submitting %s" % utils.format_hash(binascii.hexlify(block_hash)))
-        
-        if utils.uint256_from_str(hash_bin) > self.target:
-            log.debug("Share is below expected target")
-            return True
-        
-        # 2. Lookup for job and extranonce used for creating given block header
         try:
-            (job, extranonce2) = self.get_job_from_header(header)
+            job = self.headerHash2Job[hexHeaderHash]
         except KeyError:
             log.info("Job not found")
             return False
-
-        # 3. Format extranonce2 to hex string
-        extranonce2_hex = binascii.hexlify(self.extranonce2_padding(extranonce2))
-
-        # 4. Parse ntime and nonce from header
-        ntimepos = 17*8 # 17th integer in datastring
-        noncepos = 19*8 # 19th integer in datastring       
-        ntime = header[ntimepos:ntimepos+8] 
-        nonce = header[noncepos:noncepos+8]
             
-        # 5. Submit share to the pool
-        return self.f.rpc('mining.submit', [worker_name, job.job_id, extranonce2_hex, ntime, nonce])
+        return self.f.rpc('mining.submit', [worker_name, job.job_id, hexNonce, hexHeaderHash, hexMixDigest])

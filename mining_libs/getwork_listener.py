@@ -24,12 +24,12 @@ class Root(Resource):
         self.custom_password = custom_password
         
     def json_response(self, msg_id, result):
-        resp = json.dumps({'id': msg_id, 'result': result, 'error': None})
+        resp = json.dumps({'id': msg_id, 'jsonrpc': '2.0', 'result': result})
         #print "RESPONSE", resp
         return resp
     
     def json_error(self, msg_id, code, message):
-        resp = json.dumps({'id': msg_id, 'result': None, 'error': {'code': code, 'message': message}})
+        resp = json.dumps({'id': msg_id, 'jsonrpc': '2.0', 'result': False, 'error': message})
         #print "ERROR", resp
         return resp         
     
@@ -97,8 +97,25 @@ class Root(Resource):
                 d.addCallback(self._on_submit, request, data.get('id', 0), data['params'][0][:160], worker_name, start_time)
                 d.addErrback(self._on_submit_failure, request, data.get('id', 0), data['params'][0][:160], worker_name, start_time)
                 return
-            
-        request.write(self.json_error(data.get('id'), -1, "Unsupported method '%s'" % data['method']))
+        elif data['method'] == 'eth_getWork':
+			#log.info("Worker '%s' eth_getWork" % worker_name)
+			request.write(self.json_response(data.get('id', 0), self.job_registry.getwork()))
+			request.finish()
+			return
+        elif data['method'] == 'eth_submitWork':
+			d = defer.maybeDeferred(self.job_registry.submit, data['params'][0], data['params'][1], data['params'][2], worker_name)
+			start_time = time.time()
+			d.addCallback(self._on_submit, request, data.get('id', 0), data['params'], worker_name, start_time)
+			d.addErrback(self._on_submit_failure, request, data.get('id', 0), data['params'], worker_name, start_time)
+			return
+        elif data['method'] == 'eth_submitHashrate':
+			#log.info("Worker '%s' eth_submitHashrate" % worker_name)
+			request.write(self.json_response(data.get('id', 0), True))
+			request.finish()
+			return
+
+				
+        request.write(self.json_error(1, -1, "Unsupported method '%s'" % data['method']))
         request.finish()
         
     def _on_failure(self, failure, request):
@@ -143,7 +160,11 @@ class Root(Resource):
     def render_POST(self, request):        
         self._prepare_headers(request)
 
-        (worker_name, password) = (request.getUser(), request.getPassword())
+        worker_name = ''
+        uriSplit = request.uri.split(":")
+        if len(uriSplit) >= 2:
+            worker_name = uriSplit[0].replace("/", "")
+            password = uriSplit[1]
 
         if self.custom_user:
             worker_name = self.custom_user

@@ -24,8 +24,8 @@ import socket
 
 def parse_args():
     parser = argparse.ArgumentParser(description='This proxy allows you to run getwork-based miners against Stratum mining pool.')
-    parser.add_argument('-o', '--host', dest='host', type=str, default='stratum.bitcoin.cz', help='Hostname of Stratum mining pool')
-    parser.add_argument('-p', '--port', dest='port', type=int, default=3333, help='Port of Stratum mining pool')
+    parser.add_argument('-o', '--host', dest='host', type=str, default='coinotron.com', help='Hostname of Stratum mining pool')
+    parser.add_argument('-p', '--port', dest='port', type=int, default=3344, help='Port of Stratum mining pool')
     parser.add_argument('-sh', '--stratum-host', dest='stratum_host', type=str, default='0.0.0.0', help='On which network interface listen for stratum miners. Use "localhost" for listening on internal IP only.')
     parser.add_argument('-sp', '--stratum-port', dest='stratum_port', type=int, default=3333, help='Port on which port listen for stratum miners.')
     parser.add_argument('-oh', '--getwork-host', dest='getwork_host', type=str, default='0.0.0.0', help='On which network interface listen for getwork miners. Use "localhost" for listening on internal IP only.')
@@ -190,7 +190,7 @@ def main(args):
 
     log.warning("Stratum proxy version: %s" % version.VERSION)
     # Setup periodic checks for a new version
-    test_update()
+    #test_update()
     
     if args.tor:
         log.warning("Configuring Tor connection")
@@ -251,20 +251,20 @@ def main(args):
             pass # Some socket features are not available on all platforms (you can guess which one)
     
     # Setup stratum listener
-    if args.stratum_port > 0:
-        stratum_listener.StratumProxyService._set_upstream_factory(f)
-        stratum_listener.StratumProxyService._set_custom_user(args.custom_user, args.custom_password)
-        reactor.listenTCP(args.stratum_port, SocketTransportFactory(debug=False, event_handler=ServiceEventHandler), interface=args.stratum_host)
+    #if args.stratum_port > 0:
+    #    stratum_listener.StratumProxyService._set_upstream_factory(f)
+    #    stratum_listener.StratumProxyService._set_custom_user(args.custom_user, args.custom_password)
+    #    reactor.listenTCP(args.stratum_port, SocketTransportFactory(debug=False, event_handler=ServiceEventHandler), interface=args.stratum_host)
 
     # Setup multicast responder
-    reactor.listenMulticast(3333, multicast_responder.MulticastResponder((args.host, args.port), args.stratum_port, args.getwork_port), listenMultiple=True)
+    #reactor.listenMulticast(3333, multicast_responder.MulticastResponder((args.host, args.port), args.stratum_port, args.getwork_port), listenMultiple=True)
     
     log.warning("-----------------------------------------------------------------------")
-    if args.getwork_host == '0.0.0.0' and args.stratum_host == '0.0.0.0':
-        log.warning("PROXY IS LISTENING ON ALL IPs ON PORT %d (stratum) AND %d (getwork)" % (args.stratum_port, args.getwork_port))
+    if args.getwork_host == '0.0.0.0':
+        log.warning("PROXY IS LISTENING ON ALL IPs ON PORT %d (getwork)" % args.getwork_port)
     else:
-        log.warning("LISTENING FOR MINERS ON http://%s:%d (getwork) and stratum+tcp://%s:%d (stratum)" % \
-                 (args.getwork_host, args.getwork_port, args.stratum_host, args.stratum_port))
+        log.warning("LISTENING FOR MINERS ON http://%s:%d (getwork) " % \
+                 (args.getwork_host, args.getwork_port))
     log.warning("-----------------------------------------------------------------------")
 
 if __name__ == '__main__':

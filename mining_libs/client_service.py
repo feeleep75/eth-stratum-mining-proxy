@@ -44,29 +44,25 @@ class ClientMiningService(GenericEventHandler):
         if method == 'mining.notify':
             '''Proxy just received information about new mining job'''
             
-            (job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs) = params[:9]
+            (job_id, hexHeaderHash, hexSeedHash, hexShareTarget, clean_jobs) = params[:5]
             #print len(str(params)), len(merkle_branch)
             
             '''
             log.debug("Received new job #%s" % job_id)
-            log.debug("prevhash = %s" % prevhash)
-            log.debug("version = %s" % version)
-            log.debug("nbits = %s" % nbits)
-            log.debug("ntime = %s" % ntime)
+            log.debug("hexHeaderHash = %s" % hexHeaderHash)
+            log.debug("hexSeedHash = %s" % hexSeedHash)
+            log.debug("hexShareTarget = %s" % hexShareTarget)
             log.debug("clean_jobs = %s" % clean_jobs)
-            log.debug("coinb1 = %s" % coinb1)
-            log.debug("coinb2 = %s" % coinb2)
-            log.debug("merkle_branch = %s" % merkle_branch)
             '''
         
             # Broadcast to Stratum clients
-            stratum_listener.MiningSubscription.on_template(
-                            job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime, clean_jobs)
+            #stratum_listener.MiningSubscription.on_template(
+            #                job_id, hexHeaderHash, hexSeedHash, hexShareTarget, clean_jobs)
             
             # Broadcast to getwork clients
-            job = Job.build_from_broadcast(job_id, prevhash, coinb1, coinb2, merkle_branch, version, nbits, ntime)
-            log.info("New job %s for prevhash %s, clean_jobs=%s" % \
-                 (job.job_id, utils.format_hash(job.prevhash), clean_jobs))
+            job = Job.build_from_broadcast(job_id, hexHeaderHash, hexSeedHash, hexShareTarget)
+            log.info("New job %s for hexHeaderHash %s, clean_jobs=%s" % \
+                 (job.job_id, hexHeaderHash, clean_jobs))
 
             self.job_registry.add_template(job, clean_jobs)
             

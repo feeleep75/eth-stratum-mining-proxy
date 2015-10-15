@@ -18,16 +18,7 @@ args = {
     'author': 'slush',
     'author_email': 'slush@satoshilabs.com',
     'url': 'http://mining.bitcoin.cz/stratum-mining/',
-    'ext_modules': [
-      Extension(
-        'midstate', 
-        ['midstatec/midstatemodule.c'],
-        include_dirs=['/usr/include/python2.7'],
-        extra_compile_args=['-march=native', '-Wall', '-funroll-all-loops', '-O3', '-fstrict-aliasing', '-Wall', '-std=c99',  '-fPIC', '-shared'],
-        libraries=['python2.7'],
-        extra_link_args=['-Wl,-O1', '-Wl,--as-needed']
-        )
-      ],
+    'ext_modules': [],
     'py_modules': ['mining_libs.client_service', 'mining_libs.getwork_listener',
                    'mining_libs.jobs', 'mining_libs.midstate',
                    'mining_libs.multicast_responder', 'mining_libs.stratum_listener',
