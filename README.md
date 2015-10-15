@@ -26,6 +26,12 @@ Installation on Linux
 4. If you want to connect to another pool or change other proxy settings ( for example define custom worker and password ), type "mining_proxy.py --help".
 
 
+Mining
+---------------------------------------
+
+1. Start mining proxy
+2. Start ethminer with following parameters:
+	ethminer.exe --farm-recheck 200 -F http://127.0.0.1:8332/workername:workerpassword/
 
 Contact
 -------
