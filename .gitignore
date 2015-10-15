@@ -1,5 +1,6 @@
 *.pyc
 build
+dist
 distribute*
 *egg-info*
 debian/files
