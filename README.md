@@ -31,7 +31,7 @@ Mining
 
 1. Start mining proxy
 2. Start ethminer with following parameters:
-	ethminer.exe --farm-recheck 200 -F http://127.0.0.1:8332/workername:workerpassword/
+	ethminer.exe --farm-recheck 200 -F http://127.0.0.1:8332/workername:workerpassword
 
 Contact
 -------
