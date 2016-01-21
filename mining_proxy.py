@@ -3,6 +3,7 @@
     Stratum mining proxy
     Copyright (C) 2012 Marek Palatinus <slush@satoshilabs.com>
     Copyright (C) 2015 Coinotron <coinotron@gmail.com>
+    Copyright (C) 2016 Coinmine.pl <support@coinmine.pl>
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,8 +26,8 @@ import socket
 
 def parse_args():
     parser = argparse.ArgumentParser(description='This proxy allows you to run getwork-based Ethereum miners against Stratum mining pool.')
-    parser.add_argument('-o', '--host', dest='host', type=str, default='coinotron.com', help='Hostname of Stratum mining pool')
-    parser.add_argument('-p', '--port', dest='port', type=int, default=3344, help='Port of Stratum mining pool')
+    parser.add_argument('-o', '--host', dest='host', type=str, default='eth.coinmine.pl', help='Hostname of Stratum mining pool')
+    parser.add_argument('-p', '--port', dest='port', type=int, default=4000, help='Port of Stratum mining pool')
     parser.add_argument('-sh', '--stratum-host', dest='stratum_host', type=str, default='0.0.0.0', help='On which network interface listen for stratum miners. Use "localhost" for listening on internal IP only.')
     parser.add_argument('-sp', '--stratum-port', dest='stratum_port', type=int, default=3333, help='Port on which port listen for stratum miners.')
     parser.add_argument('-oh', '--getwork-host', dest='getwork_host', type=str, default='0.0.0.0', help='On which network interface listen for getwork miners. Use "localhost" for listening on internal IP only.')
