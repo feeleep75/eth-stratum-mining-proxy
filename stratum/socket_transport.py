@@ -38,6 +38,7 @@ class SocketTransportClientFactory(ReconnectingClientFactory):
         self.client = None # Reference to open connection
         self.on_disconnect = defer.Deferred()
         self.on_connect = defer.Deferred()
+        self.maxDelay = 10
         self.peers_trusted = {}
         self.peers_untrusted = {}
         self.main_host = (host, port)
