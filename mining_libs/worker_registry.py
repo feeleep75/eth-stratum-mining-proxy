@@ -33,11 +33,14 @@ class WorkerRegistry(object):
             log.warning("Authentication of worker '%s' with password '%s' failed, next attempt in few seconds..." % \
                     (worker_name, password))
             return False
-        
-        d = self.f.rpc('mining.authorize', [worker_name, password])
-        d.addCallback(self._on_authorized, worker_name)
-        d.addErrback(self._on_failure, worker_name)
-        return d
+        try:
+            d = self.f.rpc('mining.authorize', [worker_name, password])
+            d.addCallback(self._on_authorized, worker_name)
+            d.addErrback(self._on_failure, worker_name)
+            return d
+        except Exception as e:
+            log.warning("%s" %(e))
+            return False
          
     def is_authorized(self, worker_name):
         return (worker_name in self.authorized)
